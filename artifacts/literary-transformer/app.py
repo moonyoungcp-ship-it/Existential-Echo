@@ -92,9 +92,9 @@ def make_session(title: str) -> dict:
         "auto_steps": {"1": "", "2": "", "3": ""},
         "auto_length": "장편 소설",
         "narrative_pov": "1인칭 화자 ('나')",
-        "narrative_tense": "현재제",
+        "narrative_tense": "현재형",
         "era_setting": "2000년대 초반",
-        "dialect_setting": "사용 안 함 (표준어)",
+        "dialect_setting": "사용 안 함 (표준어 중심)",
         "current_scene_instruction": "",
         "scenes": []
     }
@@ -132,10 +132,9 @@ def call_scene_generation_api(session: dict) -> str:
     past_manuscript = "\n\n".join(f"[{s['scene_title']}]\n{s['scene_content']}" for s in session.get("scenes", []))
     past_context_line = f"\n\n[이전까지 누적 작성된 소설 원고 본문]:\n{past_manuscript}" if past_manuscript else "\n\n[현재 첫 번째 장면을 시작하는 단계입니다.]"
 
-    # 엄격한 인칭, 시제, 사투리, 시대 제어 지침 바인딩
     string_rules = (
         f"1. 인칭 규격: 반드시 [{session.get('narrative_pov', '1인칭 화자')}] 시점으로 집필하십시오.\n"
-        f"2. 시제 규격: 서사의 주된 문장은 반드시 [{session.get('narrative_tense', '현재제')}] 시제를 사용하여 화자의 현재성을 살리십시오.\n"
+        f"2. 시제 규격: 서사의 주된 문장은 반드시 [{session.get('narrative_tense', '현재형')}] 시제를 사용하여 화자의 현재성을 살리십시오.\n"
         f"3. 시대 고증 규격: 이 소설의 시간적 배경은 [{session.get('era_setting', '2000년대 초반')}]입니다. 풍경, 사물, 기술적 수준 등 시대적 현실 고증을 철저히 반영하십시오.\n"
         f"4. 대화체 사투리 규격: 인물들이 나누는 대화나 독백의 구어체에는 반드시 [{session.get('dialect_setting', '사용 안 함')}]의 억양과 고유 방언을 사실적으로 반영하되, 지문은 정갈한 문학 톤을 유지하십시오."
     )
@@ -276,13 +275,12 @@ if st.session_state.creating_session:
 elif st.session_state.active_idx is not None and st.session_state.sessions:
     session = st.session_state.sessions[st.session_state.active_idx]
     
-    # 세부 옵션 키 마이그레이션 안전 점검
     if "synopsis" not in session: session["synopsis"] = ""
     if "auto_steps" not in session: session["auto_steps"] = {"1": "", "2": "", "3": ""}
     if "narrative_pov" not in session: session["narrative_pov"] = "1인칭 화자 ('나')"
     if "narrative_tense" not in session: session["narrative_tense"] = "현재형"
     if "era_setting" not in session: session["era_setting"] = "2000년대 초반"
-    if "dialect_setting" not in session: session["dialect_setting"] = "사용 안 함 (표준어)"
+    if "dialect_setting" not in session: session["dialect_setting"] = "사용 안 함 (표준어 중심)"
     if "current_scene_instruction" not in session: session["current_scene_instruction"] = ""
     if "scenes" not in session: session["scenes"] = []
 
@@ -298,7 +296,6 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
 
     tab_infra, tab_builder, tab_book = st.tabs(["🏗️ 1단계: 소설 기초 뼈대 구축", "🔍 2단계: 현미경식 장면 이어 쓰기", "📚 3단계: 누적 완성 원고 서재"])
 
-    # ==================== 탭 1: 소설 기초 뼈대 구축 ====================
     with tab_infra:
         st.markdown('<p class="section-label">전체 기획 대서사 시놉시스</p>', unsafe_allow_html=True)
         synop_input = st.text_area("시놉시스 기술창", value=session["synopsis"], placeholder="여기에 소설의 전체적인 거대 줄거리와 인물 연대기 흐름을 적어주세요.", height=150, key="synop_area", label_visibility="collapsed")
@@ -308,7 +305,6 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
 
         st.markdown("<br><p class='section-label'>🚨 문학 규격 설정 기어 (장편 전용)</p>", unsafe_allow_html=True)
         
-        # 작가 선택 버튼을 완벽히 도려내고 인칭, 시제, 사투리, 시대 제어판으로 리모델링
         infra_ctrl1, infra_ctrl2 = st.columns(2)
         with infra_ctrl1:
             pov_options = ["1인칭 화자 ('나')", "3인칭 전지적 시점", "3인칭 제한적 관찰자 시점"]
@@ -373,10 +369,9 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
                 session["auto_steps"]["3"] = edit_s3
                 save_data(); st.success("갈등 구조 데이터베이스가 개정되었습니다."); st.rerun()
 
-    # ==================== 탭 2: 현미경식 장면 이어 쓰기 ====================
     with tab_builder:
         st.markdown('<p class="section-label">🎬 이번 차례에 집필할 구체적 장면 설정</p>', unsafe_allow_html=True)
-        scene_inst = st.text_area("장면 지침창", value=session["current_scene_instruction"], placeholder="예: [장면 1] 재인이 서늘한 콜센터 삼백이번 칸막이 방 안에서 도입부 풍경만 세밀하게 서술해라.", height=100, key="scene_inst_area", label_visibility="collapsed")
+        scene_inst = st.text_area("장면 지침창", value=session["current_scene_instruction"], placeholder="예: [장면 1] 재인이 콜센터 삼백이번 칸막이 방 안에서 도입부 풍경만 세밀하게 서술해라.", height=100, key="scene_inst_area", label_visibility="collapsed")
         if scene_inst != session["current_scene_instruction"]:
             session["current_scene_instruction"] = scene_inst
             save_data()
@@ -413,7 +408,6 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
                 st.success(f"『{new_scene_payload['scene_title']}』 원고가 장편 통합 서사에 완벽하게 결합되었습니다.")
                 st.rerun()
 
-    # ==================== 탭 3: 누적 완성 원고 서재 ====================
     with tab_book:
         if not session["scenes"]:
             st.markdown('<p style="color:#B0A49C; font-size:0.88rem; margin:3rem 0; text-align:center;">아직 결합된 벽돌 장면이 없습니다.</p>', unsafe_allow_html=True)
