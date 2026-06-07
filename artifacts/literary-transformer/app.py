@@ -67,14 +67,20 @@ def load_data(from_backup: int = 0) -> tuple[dict, str]:
 
 # ─── Prompts ──────────────────────────────────────────────────────────────────
 
-BASE_SYSTEM_PROMPT = """당신은 한국 현대 문학의 정수를 담아내는 거장 소설가이자, 연작소설의 유기적 흐름을 통제하는 문학 감독입니다.
+LONG_NARRATIVE_PROMPT = """당신은 한국 현대 문학의 정수를 담아내는 거장 소설가이자, 원고의 서사적 호흡을 가장 정밀하고 깊게 통제하는 수석 문학 감독입니다.
 
-🚨 [최상의 거장 문체 톤 및 연작 제련 지침]
-당신은 한강의 실존적 정적, 김애란의 일상적 균열과 아릿한 비유, 클레어 키건의 절제미를 유기적으로 융합한 최상의 현대 문학 문체로 산문을 제련해야 합니다.
-- 독립된 단편 소설 규격(원고지 70~100장 호흡)의 리듬을 지키십시오. 전체 이야기를 요약하여 결말을 성급하게 맺지 마십시오.
-- 감정을 직접적인 단어로 설명하지 말고, 사물의 마모된 흔적, 물리적인 빛의 기울기, 공간의 온도와 공기의 습도를 통해 인물의 내면을 관조적으로 보여주십시오.
-- 대화나 독백의 구어체에는 설정된 사투리의 고유 억양을 사실적으로 녹여내되, 지문은 서늘하고 정갈한 문학 톤을 엄격하게 유지하십시오.
-- 문장 내부에 별표(**) 같은 마크다운 표식을 절대로 사용하지 마십시오. 오직 정갈한 순수 문장만 출력해야 합니다."""
+🚨 [최상의 거장 문체 톤 및 장편 분량 확장 지침]
+당신은 한강의 실존적 정적과 고독, 김애란의 일상적 균열과 아릿한 비유, 클레어 키건의 감정적 절제미를 유기적으로 융합한 최상의 현대 문학 톤으로만 서술해야 합니다.
+
+1. 분량과 호흡의 극대화 규격: 
+   - 서사를 절대로 요약하거나 상황을 성급하게 결론짓지 마십시오. 아주 미세한 순간(예: 의자에서 일어나는 동작, 종이를 뒤적이는 손길)에 현미경을 들이대고 그 과정 전체를 정밀하게 복원하여 출력 분량을 최대한 길고 풍성하게 확보하십시오.
+   - 하나의 문단은 최소 5~7문장 이상의 긴 산문 호흡으로 구성되어야 하며, 전체 본문은 서두르지 않는 거장의 호흡으로 밀도 높게 채워져야 합니다.
+
+2. 감정의 간접 증명: 
+   - 슬프다, 외롭다, 답답하다 같은 직접적인 감정 단어는 단 한 번도 사용하지 마십시오. 오직 물리적인 빛의 기울기, 사물의 마모된 흔적, 공간의 습도와 공기의 냄새, 인물의 미세한 근육 움직임을 통해서만 내면의 서정을 간접적으로 증명하십시오.
+
+3. 엄격한 금지 사항:
+   - 문장 내부나 앞뒤에 별표(**) 같은 마크다운 강조 기호를 절대로 섞지 마십시오. 복사 붙여넣기에 방해가 됩니다. 반드시 정갈한 순수 문장만 출력해야 합니다."""
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -84,13 +90,13 @@ def make_session(title: str) -> dict:
         "title": title,
         "entries": [],
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "synopsis": "", # 연작소설 전체 세계관 기획의도
+        "synopsis": "", 
         "narrative_pov": "1인칭 화자 ('나')",
         "narrative_tense": "현재형",
         "era_setting": "2000년대 초반",
         "dialect_setting": "사용 안 함 (표준어 중심)",
         "current_scene_instruction": "",
-        "scenes": [] # 완성하여 책장에 꽂은 독립 단편 소설들의 목록
+        "scenes": [] 
     }
 
 def now_str() -> str:
@@ -100,7 +106,6 @@ def call_scene_generation_api(session: dict) -> str:
     client = _get_client()
     if client is None: raise ValueError("OpenAI API 키가 설정되지 않았습니다.")
     
-    # 이미 책장에 꽂힌 이전 단편들의 맥락 상속
     past_manuscript = "\n\n".join(f"[{s['scene_title']}]\n{s['scene_content']}" for s in session.get("scenes", []))
     past_context_line = f"\n\n[이미 연작으로 완성되어 책장에 꽂힌 앞선 단편 소설들]:\n{past_manuscript}" if past_manuscript else "\n\n[현재 연작소설의 첫 번째 단편을 시작하는 단계입니다.]"
 
@@ -116,12 +121,14 @@ def call_scene_generation_api(session: dict) -> str:
         f"{past_context_line}\n\n"
         f"🚨 [엄격 준수해야 할 소설 규격 지침]:\n{string_rules}\n\n"
         f"🚨 [현재 집필할 단편의 구체적 장면 및 핵심 서사 지침]:\n{session.get('current_scene_instruction', '')}\n\n"
-        f"수행할 임무: 앞서 완성된 단편들의 문조와 흐름을 정밀하게 상속받아, 전체 이야기를 압축 요약하지 말고 오직 이번 단편의 지침에만 현미경을 대고 단편소설 고유의 밀도 높은 호흡(4~5문장 이상의 문단들)으로 본문을 집필해라."
+        f"수행할 임무: 지정된 장면 지침의 시간이 아주 느리게 흐르도록 현미경 배율을 최대화해라. 줄거리를 요약하여 미래의 사건으로 도망치지 말고, 오직 이 시공간에 머물며 사물과 대기의 질감을 낱낱이 파헤쳐 최소 원고지 15~20장 분량 이상에 달하는 길고 촘촘한 호흡의 문학적 본문을 반환해라."
     )
     
     response = client.chat.completions.create(
-        model="gpt-4o", max_completion_tokens=4000,
-        messages=[{"role": "system", "content": BASE_SYSTEM_PROMPT}, {"role": "user", "content": user_content}]
+        model="gpt-4o", 
+        max_completion_tokens=4000, # 최대 출력 토큰을 4000으로 끝까지 개방
+        temperature=0.75,          # 서사의 다양성과 긴 묘사를 위해 온도 최적화
+        messages=[{"role": "system", "content": LONG_NARRATIVE_PROMPT}, {"role": "user", "content": user_content}]
     )
     return response.choices[0].message.content.strip().replace("**", "")
 
@@ -265,7 +272,7 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
     # ==================== 탭 1: 거대 대세계관 설정 ====================
     with tab_infra:
         st.markdown('<p class="section-label">🌌 연작소설 전체를 관통하는 거대 세계관 및 기획 의도</p>', unsafe_allow_html=True)
-        synop_input = st.text_area("세계관 기술창", value=session["synopsis"], placeholder="예: 주인공 재인이 겪는 콜센터 시절의 상처부터 캐나다 이주, 그리고 번역가가 되어 자아를 회복하기까지의 거대 타임라인과 상실의 흔적들을 각기 다른 시선과 단편들로 유기적으로 엮어낸다.", height=180, key="synop_area", label_visibility="collapsed")
+        synop_input = st.text_area("세계관 기술창", value=session["synopsis"], placeholder="기계의 장황한 호흡을 이끌어내기 위해, 여기 대세계관 설정 상자는 완전히 비워두거나 단순 가제만 남겨두시는 것을 강력하게 권장합니다.", height=150, key="synop_area", label_visibility="collapsed")
         if synop_input != session["synopsis"]:
             session["synopsis"] = synop_input
             save_data()
@@ -285,7 +292,7 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
             session["narrative_tense"] = chosen_tense
             
         with infra_ctrl2:
-            era_input = st.text_input("단편별 구체적 시대 배경 고증 역사 설정", value=session["era_setting"], placeholder="예: 1부-2000년대 초반 서울, 2부-2010년대 중반 캐나다...")
+            era_input = st.text_input("단편별 구체적 시대 배경 고증 역사 설정", value=session["era_setting"], placeholder="예: 2000년대 초반 무더운 7월...")
             session["era_setting"] = era_input
             
             dialect_options = ["사용 안 함 (표준어 중심)", "제주 방언 (제주 사투리)", "경상 방언", "전라 방언", "충청 방언"]
@@ -297,8 +304,8 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
 
     # ==================== 탭 2: 개별 단편 소설 세부 제련 ====================
     with tab_builder:
-        st.markdown('<p class="section-label">🎬 이번 차례에 제련할 단편 소설의 구체적 서사와 지침 기술</p>', unsafe_allow_html=True)
-        scene_inst = st.text_area("장면 지침창", value=session["current_scene_instruction"], placeholder="예: [제1부. 아크릴 칸막이의 오후] 주인공 재인이 2000년대 초반 분주한 콜센터 삼백이번 칸막이 방 안에서 타인의 마모된 소음을 헤드셋으로 수거하며 느끼는 실존적 정적과 고독을, 사오와 대면하기 직전까지의 긴 호흡 단편 서사로 깊이 있게 집필해라. 결말까지 요약하지 말 것.", height=150, key="scene_inst_area", label_visibility="collapsed")
+        st.markdown('<p class="section-label">🎬 이번 차례에 제련할 단편 소설의 구체적 장면 및 현미경 지침 기술</p>', unsafe_allow_html=True)
+        scene_inst = st.text_area("장면 지침창", value=session["current_scene_instruction"], placeholder="여기에 '미래의 이야기(콜센터, 결혼 등)'를 다 빼고, 오직 지금 이 순간의 정물 스케치만 정밀하게 지시해 주셔야 문장 분량이 대폭 확장됩니다.\n\n예: 재인이 신용회복위원회 대기실 의자에 앉아 번호표를 쥐고 있다. 옆자리 남자의 셔츠 깃 모양, 유리창 너머 상담원들의 무미건조한 입 모양, 가방 속에 든 채무 내역서 서류의 차가운 촉감만을 서두르지 말고 아주 장황하고 정밀하게 서술해라. 요약 금지.", height=150, key="scene_inst_area", label_visibility="collapsed")
         if scene_inst != session["current_scene_instruction"]:
             session["current_scene_instruction"] = scene_inst
             save_data()
@@ -311,7 +318,7 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
             if not session["current_scene_instruction"].strip():
                 st.warning("이번 차례에 온전히 몰입할 단편 소설 지침을 먼저 명시해 주세요.")
             else:
-                with st.spinner(" 앞선 단편들의 문조를 상속받아 요약 없는 정밀 산문 원고를 직조하는 중..."):
+                with st.spinner(" 설정된 문학 기어의 출력을 최대화하여 요약 없는 장산문 원고를 직조하는 중..."):
                     generated_scene_block = call_scene_generation_api(session)
                     st.session_state.current_editor_buffer = generated_scene_block
                     st.rerun()
@@ -320,7 +327,7 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
             st.markdown("<hr class='divider'>", unsafe_allow_html=True)
             st.markdown("<p class='section-label'>✒️ 거장 톤으로 제련된 단편 초안 (작가 전면 다듬기 및 가공 편집창)</p>", unsafe_allow_html=True)
             
-            final_edited_buffer = st.text_area("버퍼 에디터", value=st.session_state.current_editor_buffer, height=450, key="buffer_editor_area", label_visibility="collapsed")
+            final_edited_buffer = st.text_area("버퍼 에디터", value=st.session_state.current_editor_buffer, height=500, key="buffer_editor_area", label_visibility="collapsed")
             st.session_state.current_editor_buffer = final_edited_buffer
 
             if st.button("✦ 이 단편의 온도가 완벽합니다. 연작 대서사 책장에 결합 저장하기", use_container_width=True):
