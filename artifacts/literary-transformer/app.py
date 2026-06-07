@@ -67,16 +67,13 @@ def load_data(from_backup: int = 0) -> tuple[dict, str]:
 
 # ─── Prompts ──────────────────────────────────────────────────────────────────
 
-AUTO_ENGINE_PROMPT = """당신은 소설 창작의 전 과정을 완벽하게 통제하는 수석 문학 감독이자 거장 소설가입니다.
-작가가 제공한 시놉시스와 인물/배경 설정을 바탕으로, 지정된 분량 호흡에 맞추어 [1단계: 인물 구축], [2단계: 세부 배경 묘사], [3단계: 갈등 및 사건 전개], [4단계: 특정 장면 세부 집필] 단계를 정밀하게 수행해야 합니다.
+AUTO_ENGINE_PROMPT = """당신은 한국 현대 문학의 정수를 담아내는 거장 소설가이자, 창작의 전 과정을 정밀하게 통제하는 수석 문학 감독입니다.
 
-🚨 [장편 이어 쓰기 전용 서사 통제 규칙]
-당신은 전체 줄거리를 요약하여 결말을 성급하게 맺어서는 안 됩니다. 
-4단계 집필 명령이 발동되면, 소설의 전체 연대기를 압축하지 말고 작가가 명시한 '현재 집필할 특정 장면과 지침'에만 현미경을 대듯 초점을 맞추십시오. 
-이전 장면에 축적된 문장들의 분위기와 인물 관계를 정밀하게 이어받아, 서두르지 않는 깊고 느린 호흡의 산문 문단들을 풍부하게 가공하여 완성해라.
-
-절대 주의 사항:
-출력하는 결과물 텍스트 전체에 별표 같은 마크다운 강조 기호를 절대로 섞지 마십시오. 오직 정갈한 순수 문장만 출력해야 합니다."""
+🚨 [최상의 통합 거장 문체 톤 지침]
+당신은 한강의 실존적 정적과 깊은 고독, 김애란의 일상적 균열과 아릿한 비유, 편혜영의 내면적 긴장감, 그리고 클레어 키건의 감정적 절제미를 유기적으로 융합한 '최상의 현대 문학 톤'으로만 서술해야 합니다.
+- 감정을 슬프다, 외롭다 같은 직접적인 단어로 기술하지 마십시오. 오직 물리적인 빛의 기울기, 사물의 마모된 흔적, 공간의 습도와 공기의 냄새를 통해 내면의 서정을 간접적으로 증명하십시오.
+- 서사를 성급하게 요약하여 결말을 맺지 마십시오. 현미경을 대듯 정밀하게 그 장면의 공기를 포착하십시오.
+- 문장 내부나 앞뒤에 별표(**) 같은 마크다운 강조 기호를 절대로 섞지 마십시오. 반드시 정갈한 순수 문장만 출력해야 합니다."""
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -94,7 +91,10 @@ def make_session(title: str) -> dict:
         "synopsis": "",
         "auto_steps": {"1": "", "2": "", "3": ""},
         "auto_length": "장편 소설",
-        "auto_style": "성애나",
+        "narrative_pov": "1인칭 화자 ('나')",
+        "narrative_tense": "현재제",
+        "era_setting": "2000년대 초반",
+        "dialect_setting": "사용 안 함 (표준어)",
         "current_scene_instruction": "",
         "scenes": []
     }
@@ -107,15 +107,14 @@ def call_auto_engine_api(session: dict, step: str) -> str:
     if client is None: raise ValueError("OpenAI API 키가 설정되지 않았습니다.")
     
     step_instruction = {
-        "1": "1단계 [인물 구축]: 제공된 소설 시놉시스를 바탕으로 주인공 및 주변 인물들의 성격, 심리적 결함, 모순적 내면을 깊이 있게 분석하고 설정안을 도출해라.",
-        "2": f"2단계 [세부 배경 묘사]: 앞서 구축된 인물 정보({session['auto_steps'].get('1', '')})를 참조하여, 그들이 호흡할 공간의 대기, 온도, 습도, 사물의 감각적 풍경을 세밀하게 빌드업해라.",
-        "3": f"3단계 [갈등 및 사건 전개]: 앞선 인물과 배경 설정 위에서 시놉시스의 사건이 어떻게 고조되는지 구체적인 서사 갈등 축을 설계해라."
+        "1": f"1단계 [인물 구축]: 제공된 소설 시놉시스를 바탕으로 주인공 및 주변 인물들의 성격, 심리적 결함, 모순적 내면을 깊이 있게 분석하고 설정안을 도출해라. 시대 배경 규격인 [{session.get('era_setting', '2000년대 초반')}]의 사회상과 인물들의 전사가 자연스럽게 녹아들도록 인물을 설계해라.",
+        "2": f"2단계 [세부 배경 묘사]: 앞서 구축된 인물 정보({session['auto_steps'].get('1', '')})를 참조하여, 그들이 호흡할 공간의 대기, 온도, 습도, 사물의 감각적 풍경을 세밀하게 빌드업해라. 시대적 배경 고증과 공간의 물리적 질감을 극대화해라.",
+        "3": f"3단계 [갈등 및 사건 전개]: 앞선 인물과 배경 설정을 위에서 시놉시스의 사건이 어떻게 균열을 일으키는지 구체적인 서사 갈등 축과 타임라인을 설계해라."
     }
     
     user_content = (
         f"소설 기획 제목: {session['title']}\n"
-        f"설정된 소설 분량 규격: {session.get('auto_length', '장편 소설')}\n"
-        f"지정된 합성 문체: {session.get('auto_style', '성애나')}\n"
+        f"설정된 소설 시대 배경: {session.get('era_setting', '2000년대 초반')}\n"
         f"전체 기획 시놉시스 원문: {session.get('synopsis', '')}\n\n"
         f"수행할 임무: {step_instruction[step]}"
     )
@@ -133,16 +132,24 @@ def call_scene_generation_api(session: dict) -> str:
     past_manuscript = "\n\n".join(f"[{s['scene_title']}]\n{s['scene_content']}" for s in session.get("scenes", []))
     past_context_line = f"\n\n[이전까지 누적 작성된 소설 원고 본문]:\n{past_manuscript}" if past_manuscript else "\n\n[현재 첫 번째 장면을 시작하는 단계입니다.]"
 
+    # 엄격한 인칭, 시제, 사투리, 시대 제어 지침 바인딩
+    string_rules = (
+        f"1. 인칭 규격: 반드시 [{session.get('narrative_pov', '1인칭 화자')}] 시점으로 집필하십시오.\n"
+        f"2. 시제 규격: 서사의 주된 문장은 반드시 [{session.get('narrative_tense', '현재제')}] 시제를 사용하여 화자의 현재성을 살리십시오.\n"
+        f"3. 시대 고증 규격: 이 소설의 시간적 배경은 [{session.get('era_setting', '2000년대 초반')}]입니다. 풍경, 사물, 기술적 수준 등 시대적 현실 고증을 철저히 반영하십시오.\n"
+        f"4. 대화체 사투리 규격: 인물들이 나누는 대화나 독백의 구어체에는 반드시 [{session.get('dialect_setting', '사용 안 함')}]의 억양과 고유 방언을 사실적으로 반영하되, 지문은 정갈한 문학 톤을 유지하십시오."
+    )
+
     user_content = (
         f"소설 기획 제목: {session['title']}\n"
-        f"지정된 합성 문체: {session.get('auto_style', '성애나')}\n"
         f"전체 기본 시놉시스: {session.get('synopsis', '')}\n"
         f"1단계 인물 설정 환경: {session['auto_steps'].get('1', '')}\n"
         f"2단계 배경 묘사 환경: {session['auto_steps'].get('2', '')}\n"
         f"3단계 갈등 구조 환경: {session['auto_steps'].get('3', '')}"
         f"{past_context_line}\n\n"
+        f"🚨 [엄격 준수해야 할 소설 집필 규격]:\n{string_rules}\n\n"
         f"🚨 [이번 차례에 집필할 구체적 장면 지침]:\n{session.get('current_scene_instruction', '')}\n\n"
-        f"수행할 임무: 위의 구체적 장면 지침에만 현미경을 들이대고, 결말까지 요약하지 말고, 지정된 문체 톤의 길고 세밀한 장편 호흡 본문 문단(최소 4~5문장 이상)을 작성해라."
+        f"수행할 임무: 위의 모든 문학적 규격과 장면 지침에만 현미경을 들이대고, 결말까지 요약하지 말고, 서두르지 않는 거장의 깊은 호흡으로 생생한 장편 본문 문단을 작성해라."
     )
     
     response = client.chat.completions.create(
@@ -212,10 +219,8 @@ with st.sidebar:
             is_active = idx_real == st.session_state.active_idx
             bg = "background:#F5F0EB; border-left:2px solid #8B6F5E;" if is_active else "border-left:2px solid transparent;"
             
-            # 하위 호환성을 위해 생성일시가 누락된 과거 방인 경우 현재 시각 보정
             session_time = sess.get("created_at", "날짜 불명")
             
-            # 가제 텍스트와 아래에 은은한 폰트로 날짜 및 시간을 정갈하게 출력
             st.markdown(
                 f'<div class="session-item" style="{bg} padding:0.5rem 0.8rem;">'
                 f'<div style="font-size:0.85rem; font-weight:400; color:#2C2C2C; margin-bottom:0.15rem;">{sess["title"]}</div>'
@@ -271,10 +276,13 @@ if st.session_state.creating_session:
 elif st.session_state.active_idx is not None and st.session_state.sessions:
     session = st.session_state.sessions[st.session_state.active_idx]
     
+    # 세부 옵션 키 마이그레이션 안전 점검
     if "synopsis" not in session: session["synopsis"] = ""
     if "auto_steps" not in session: session["auto_steps"] = {"1": "", "2": "", "3": ""}
-    if "auto_length" not in session: session["auto_length"] = "장편 소설"
-    if "auto_style" not in session: session["auto_style"] = "성애나"
+    if "narrative_pov" not in session: session["narrative_pov"] = "1인칭 화자 ('나')"
+    if "narrative_tense" not in session: session["narrative_tense"] = "현재형"
+    if "era_setting" not in session: session["era_setting"] = "2000년대 초반"
+    if "dialect_setting" not in session: session["dialect_setting"] = "사용 안 함 (표준어)"
     if "current_scene_instruction" not in session: session["current_scene_instruction"] = ""
     if "scenes" not in session: session["scenes"] = []
 
@@ -290,6 +298,7 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
 
     tab_infra, tab_builder, tab_book = st.tabs(["🏗️ 1단계: 소설 기초 뼈대 구축", "🔍 2단계: 현미경식 장면 이어 쓰기", "📚 3단계: 누적 완성 원고 서재"])
 
+    # ==================== 탭 1: 소설 기초 뼈대 구축 ====================
     with tab_infra:
         st.markdown('<p class="section-label">전체 기획 대서사 시놉시스</p>', unsafe_allow_html=True)
         synop_input = st.text_area("시놉시스 기술창", value=session["synopsis"], placeholder="여기에 소설의 전체적인 거대 줄거리와 인물 연대기 흐름을 적어주세요.", height=150, key="synop_area", label_visibility="collapsed")
@@ -297,14 +306,31 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
             session["synopsis"] = synop_input
             save_data()
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        sty_options = ["성애나", "클레어 키건", "김애란"]
-        current_sty_prefix = session["auto_style"].split()[0]
-        default_sty_idx = sty_options.index(current_sty_prefix) if current_sty_prefix in sty_options else 0
-        chosen_sty = st.radio("장편 문체 톤 제어기", sty_options, index=default_sty_idx, horizontal=True)
-        if chosen_sty != session["auto_style"]:
-            session["auto_style"] = chosen_sty
-            save_data()
+        st.markdown("<br><p class='section-label'>🚨 문학 규격 설정 기어 (장편 전용)</p>", unsafe_allow_html=True)
+        
+        # 작가 선택 버튼을 완벽히 도려내고 인칭, 시제, 사투리, 시대 제어판으로 리모델링
+        infra_ctrl1, infra_ctrl2 = st.columns(2)
+        with infra_ctrl1:
+            pov_options = ["1인칭 화자 ('나')", "3인칭 전지적 시점", "3인칭 제한적 관찰자 시점"]
+            default_pov_idx = pov_options.index(session["narrative_pov"]) if session["narrative_pov"] in pov_options else 0
+            chosen_pov = st.radio("소설 서사 인칭 선택", pov_options, index=default_pov_idx)
+            session["narrative_pov"] = chosen_pov
+            
+            tense_options = ["현재형 (생동감과 깊은 실존적 몰입)", "과거형 (전통적 산문의 안정된 서사 호흡)"]
+            default_tense_idx = 0 if "현재" in session["narrative_tense"] else 1
+            chosen_tense = st.radio("서사 주안 시제 설정", tense_options, index=default_tense_idx)
+            session["narrative_tense"] = chosen_tense
+            
+        with infra_ctrl2:
+            era_input = st.text_input("시대적 배경 역사 고증 설정 (텍스트 입력)", value=session["era_setting"], placeholder="예: 1990년대 중반 IMF 직전, 2000년대 초반 콜센터...")
+            session["era_setting"] = era_input
+            
+            dialect_options = ["사용 안 함 (표준어 중심)", "제주 방언 (제주 사투리)", "경상 방언", "전라 방언", "충청 방언"]
+            default_dia_idx = dialect_options.index(session["dialect_setting"]) if session["dialect_setting"] in dialect_options else 0
+            chosen_dia = st.radio("대화체 사투리 고증 기어", dialect_options, index=default_dia_idx)
+            session["dialect_setting"] = chosen_dia
+            
+        save_data()
 
         st.markdown("<hr class='divider'>", unsafe_allow_html=True)
         st.markdown('<p class="section-label">순차적 인프라 빌드업 단추</p>', unsafe_allow_html=True)
@@ -312,7 +338,7 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
         infra_col1, infra_col2, infra_col3 = st.columns(3)
         with infra_col1:
             if st.button("👥 1단계: 전체 인물 구축", use_container_width=True):
-                with st.spinner(" 시놉시스 기반 복합 인물 형상화 중..."):
+                with st.spinner(" 시놉시스 및 시대 고증 기반 복합 인물 형상화 중..."):
                     session["auto_steps"]["1"] = call_auto_engine_api(session, "1")
                     save_data(); st.rerun()
         with infra_col2:
@@ -347,9 +373,10 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
                 session["auto_steps"]["3"] = edit_s3
                 save_data(); st.success("갈등 구조 데이터베이스가 개정되었습니다."); st.rerun()
 
+    # ==================== 탭 2: 현미경식 장면 이어 쓰기 ====================
     with tab_builder:
         st.markdown('<p class="section-label">🎬 이번 차례에 집필할 구체적 장면 설정</p>', unsafe_allow_html=True)
-        scene_inst = st.text_area("장면 지침창", value=session["current_scene_instruction"], placeholder="예: [장면 1] 재인이 콜센터 삼백이번 칸막이 방 안에서 도입부 풍경만 세밀하게 서술해라.", height=100, key="scene_inst_area", label_visibility="collapsed")
+        scene_inst = st.text_area("장면 지침창", value=session["current_scene_instruction"], placeholder="예: [장면 1] 재인이 서늘한 콜센터 삼백이번 칸막이 방 안에서 도입부 풍경만 세밀하게 서술해라.", height=100, key="scene_inst_area", label_visibility="collapsed")
         if scene_inst != session["current_scene_instruction"]:
             session["current_scene_instruction"] = scene_inst
             save_data()
@@ -361,14 +388,14 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
             if not session["current_scene_instruction"].strip():
                 st.warning("이번 차례에 조명할 장면 지침을 먼저 기술해 주세요.")
             else:
-                with st.spinner(" 다음 결말을 요약하지 않고, 오직 이 장면에만 현미경을 대고 문장을 제련하는 중..."):
+                with st.spinner(" 설정된 문학 기어와 고증을 동기화하여 장면을 집필하는 중..."):
                     generated_scene_block = call_scene_generation_api(session)
                     st.session_state.current_editor_buffer = generated_scene_block
                     st.rerun()
 
         if st.session_state.current_editor_buffer:
             st.markdown("<hr class='divider'>", unsafe_allow_html=True)
-            st.markdown("<p class='section-label'>✒️ AI가 벼려낸 장면 초안 (작가 수동 편집창)</p>", unsafe_allow_html=True)
+            st.markdown("<p class='section-label'>✒️ 통합 거장 톤으로 제련된 장면 초안 (수동 편집 및 다듬기)</p>", unsafe_allow_html=True)
             
             final_edited_buffer = st.text_area("버퍼 에디터", value=st.session_state.current_editor_buffer, height=400, key="buffer_editor_area", label_visibility="collapsed")
             st.session_state.current_editor_buffer = final_edited_buffer
@@ -383,9 +410,10 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
                 session["current_scene_instruction"] = ""
                 st.session_state.current_editor_buffer = ""
                 save_data()
-                st.success(f"『{new_scene_payload['scene_title']}』 원고가 통합 대서사 전권에 부드럽게 결합되었습니다.")
+                st.success(f"『{new_scene_payload['scene_title']}』 원고가 장편 통합 서사에 완벽하게 결합되었습니다.")
                 st.rerun()
 
+    # ==================== 탭 3: 누적 완성 원고 서재 ====================
     with tab_book:
         if not session["scenes"]:
             st.markdown('<p style="color:#B0A49C; font-size:0.88rem; margin:3rem 0; text-align:center;">아직 결합된 벽돌 장면이 없습니다.</p>', unsafe_allow_html=True)
