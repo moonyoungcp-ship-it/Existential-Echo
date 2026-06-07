@@ -65,36 +65,18 @@ def load_data(from_backup: int = 0) -> tuple[dict, str]:
                 continue
     return {"sessions": [], "active_idx": None, "pen_name": "", "saved_at": ""}, "empty"
 
-# ─── Prompts & Maps ────────────────────────────────────────────────────────────
-
-BASE_SYSTEM_PROMPT = """당신은 한국 현대 문학의 정수를 담은 작가입니다.
-사용자가 일상적인 이야기나 경험을 입력하면, 그것을 실존적인 고독과 서정성이 깃든 현대 소설 문체로 변환해야 합니다.
-설명하거나 해석하지 않습니다 — 보여줄 뿐입니다. 반드시 순수한 문학 텍스트만 출력하세요. 별표 같은 기호는 금지합니다."""
+# ─── Prompts ──────────────────────────────────────────────────────────────────
 
 AUTO_ENGINE_PROMPT = """당신은 소설 창작의 전 과정을 완벽하게 통제하는 수석 문학 감독이자 거장 소설가입니다.
-작가가 제공한 시놉시스를 바탕으로, 지정된 분량 호흡에 맞추어 [1단계: 인물 구축], [2단계: 세부 배경 묘사], [3단계: 갈등 및 사건 전개], [4단계: 최종 문장화 및 합성] 단계를 정밀하게 수행해야 합니다.
+작가가 제공한 시놉시스와 인물/배경 설정을 바탕으로, 지정된 분량 호흡에 맞추어 [1단계: 인물 구축], [2단계: 세부 배경 묘사], [3단계: 갈등 및 사건 전개], [4단계: 특정 장면 세부 집필] 단계를 정밀하게 수행해야 합니다.
 
-🚨 [중요: 분량 규격별 서사 통제 규칙]
-당신은 전체 줄거리를 절대로 요약하여 결말까지 서둘러 서술해서는 안 됩니다. 지정된 분량의 '호흡법'을 엄격하게 지키십시오.
-
-1. 단편 소설 (원고지 70~100장 규격 호흡):
-   시놉시스 전체의 결말을 맺으려 하지 말고, 갈등이 집약된 핵심 사건이나 단일한 공간 속 시선에 초점을 맞추어 촘촘하게 한 장면을 빌드업하십시오.
-2. 중편 소설 (원고지 200~400장 규격 호흡):
-   인물 간의 관계와 내면의 심리적 균열이 본격적으로 전개되는 중반부 서사의 갈등 고조 정황에 집중하여 차분하게 두세 단락 이상 서술하십시오.
-3. 장편 소설 (원고지 800장 이상 대서사 규격 호흡):
-   전체 타임라인을 절대로 요약하지 마십시오. 장편 소설의 도입부 집필 원칙에 따라, 소설의 전체 시놉시스 중 오직 '첫 번째 장면(예: 인물이 처한 방의 온도, 냄새, 피부에 닿는 습도, 사소한 손짓 등)'에만 현미경을 들이대듯 극도로 세밀하게 확장하여 깊고 장엄한 호흡으로 서술하십시오. 결말로 나아가지 말고 도입부 장면 자체를 문학적으로 완성하는 데 집중하십시오.
-
-문체 합성 규칙:
-- 클레어 키건 모드: 감상적 개입을 철저히 차단하고, 사물의 물리적 상태와 절제된 행동만으로 침묵의 서사를 암시합니다.
-- 김애란 모드: 일상의 비좁은 틈새에서 돋아나는 감각적이고 아릿한 비유, 동시대적 소외감을 예리하게 포착합니다.
-- 성애나 모드: 화자 본연의 묵직한 관조적 어조를 유지하며, 세상의 소음과 침묵을 정갈하고 서늘하게 기록합니다.
+🚨 [장편 이어 쓰기 전용 서사 통제 규칙]
+당신은 전체 줄거리를 요약하여 결말을 성급하게 맺어서는 안 됩니다. 
+4단계 집필 명령이 발동되면, 소설의 전체 연대기를 압축하지 말고 작가가 명시한 '현재 집필할 특정 장면과 지침'에만 현미경을 대듯 초점을 맞추십시오. 
+이전 장면에 축적된 문장들의 분위기와 인물 관계를 정밀하게 이어받아, 서두르지 않는 깊고 느린 호흡의 산문 문단들을 풍부하게 가공하여 완성해라.
 
 절대 주의 사항:
 출력하는 결과물 텍스트 전체에 별표 같은 마크다운 강조 기호를 절대로 섞지 마십시오. 오직 정갈한 순수 문장만 출력해야 합니다."""
-
-STORY_COMPLETE_PROMPT = """당신은 한국 현대 문학을 대표하는 단편 작가입니다.
-사용자가 여러 개의 독립적인 문학적 장면들을 보내면, 이것들을 하나의 유기적인 단편소설로 엮어야 합니다.
-반드시 문장 앞뒤나 내부에 별표 같은 마크다운 표식을 절대 사용하지 마세요. 순수한 문학 텍스트만 출력하세요."""
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -110,25 +92,15 @@ def make_session(title: str) -> dict:
         "style_mode": None,
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "synopsis": "",
-        "auto_steps": {"1": "", "2": "", "3": "", "4": ""},
-        "auto_length": "단편 소설",
-        "auto_style": "성애나"
+        "auto_steps": {"1": "", "2": "", "3": ""},
+        "auto_length": "장편 소설",
+        "auto_style": "성애나",
+        "current_scene_instruction": "",
+        "scenes": []
     }
 
 def now_str() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M")
-
-def get_full_text(session: dict) -> str:
-    return "\n\n".join(e["output"] for e in session["entries"])
-
-def call_api(user_text: str, session: dict) -> str:
-    client = _get_client()
-    if client is None: raise ValueError("OpenAI API 키가 설정되지 않았습니다.")
-    response = client.chat.completions.create(
-        model="gpt-4o", max_completion_tokens=2000,
-        messages=[{"role": "system", "content": BASE_SYSTEM_PROMPT}, {"role": "user", "content": user_text.strip()}]
-    )
-    return response.choices[0].message.content.strip()
 
 def call_auto_engine_api(session: dict, step: str) -> str:
     client = _get_client()
@@ -136,17 +108,41 @@ def call_auto_engine_api(session: dict, step: str) -> str:
     
     step_instruction = {
         "1": "1단계 [인물 구축]: 제공된 소설 시놉시스를 바탕으로 주인공 및 주변 인물들의 성격, 심리적 결함, 모순적 내면을 깊이 있게 분석하고 설정안을 도출해라.",
-        "2": f"2단계 [세부 배경 묘사]: 앞서 구축된 인물 정보({session['auto_steps']['1']})를 참조하여, 그들이 호흡할 공간의 대기, 온도, 습도, 사물의 감각적 풍경을 세밀하게 빌드업해라.",
-        "3": f"3단계 [갈등 및 사건 전개]: 앞선 인물과 배경 설정({session['auto_steps']['2']}) 위에서 시놉시스의 사건이 어떻게 고조되는지 구체적인 서사 타임라인 및 심리적 균열을 설계해라.",
-        "4": f"4단계 [최종 문장화 및 합성]: 모든 빌드업 데이터({session['auto_steps']['3']})를 종합하여, 선택된 '{session.get('auto_style', '성애나')}'의 문체 톤으로 실제 소설 원고 본문 문단(4~5문장 이상)을 완벽하게 가공하여 완성해라."
+        "2": f"2단계 [세부 배경 묘사]: 앞서 구축된 인물 정보({session['auto_steps'].get('1', '')})를 참조하여, 그들이 호흡할 공간의 대기, 온도, 습도, 사물의 감각적 풍경을 세밀하게 빌드업해라.",
+        "3": f"3단계 [갈등 및 사건 전개]: 앞선 인물과 배경 설정 위에서 시놉시스의 사건이 어떻게 고조되는지 구체적인 서사 갈등 축을 설계해라."
     }
     
     user_content = (
         f"소설 기획 제목: {session['title']}\n"
-        f"설정된 소설 분량 규격: {session.get('auto_length', '단편 소설')}\n"
+        f"설정된 소설 분량 규격: {session.get('auto_length', '장편 소설')}\n"
         f"지정된 합성 문체: {session.get('auto_style', '성애나')}\n"
         f"전체 기획 시놉시스 원문: {session.get('synopsis', '')}\n\n"
         f"수행할 임무: {step_instruction[step]}"
+    )
+    
+    response = client.chat.completions.create(
+        model="gpt-4o", max_completion_tokens=4000,
+        messages=[{"role": "system", "content": AUTO_ENGINE_PROMPT}, {"role": "user", "content": user_content}]
+    )
+    return response.choices[0].message.content.strip().replace("**", "")
+
+def call_scene_generation_api(session: dict) -> str:
+    client = _get_client()
+    if client is None: raise ValueError("OpenAI API 키가 설정되지 않았습니다.")
+    
+    past_manuscript = "\n\n".join(f"[{s['scene_title']}]\n{s['scene_content']}" for s in session.get("scenes", []))
+    past_context_line = f"\n\n[이전까지 누적 작성된 소설 원고 본문]:\n{past_manuscript}" if past_manuscript else "\n\n[현재 첫 번째 장면을 시작하는 단계입니다.]"
+
+    user_content = (
+        f"소설 기획 제목: {session['title']}\n"
+        f"지정된 합성 문체: {session.get('auto_style', '성애나')}\n"
+        f"전체 기본 시놉시스: {session.get('synopsis', '')}\n"
+        f"1단계 인물 설정 환경: {session['auto_steps'].get('1', '')}\n"
+        f"2단계 배경 묘사 환경: {session['auto_steps'].get('2', '')}\n"
+        f"3단계 갈등 구조 환경: {session['auto_steps'].get('3', '')}"
+        f"{past_context_line}\n\n"
+        f"🚨 [이번 차례에 집필할 구체적 장면 지침]:\n{session.get('current_scene_instruction', '')}\n\n"
+        f"수행할 임무: 위의 구체적 장면 지침에만 현미경을 들이대고, 결말까지 요약하지 말고, 지정된 문체 톤의 길고 세밀한 장편 호흡 본문 문단(최소 4~5문장 이상)을 작성해라."
     )
     
     response = client.chat.completions.create(
@@ -161,7 +157,7 @@ st.set_page_config(page_title="일상의 문학", page_icon="✦", layout="wide"
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght=300;400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Noto Serif KR', Georgia, serif; }
     .stApp { background-color: #FAF8F5; }
     [data-testid="stSidebar"] { background-color: #F0EDE8 !important; border-right: 1px solid #D4C8BE; }
@@ -174,7 +170,7 @@ st.markdown("""
     .stButton > button { font-family: 'Noto Serif KR', Georgia, serif !important; background-color: #2C2C2C !important; color: #FAF8F5 !important; border: none !important; border-radius: 2px !important; font-size: 0.8rem !important; letter-spacing: 0.2em !important; padding: 0.6rem 1.5rem !important; width: 100%; }
     .stButton > button:hover { background-color: #8B6F5E !important; }
     .stTextArea textarea { font-family: 'Noto Serif KR', Georgia, serif !important; font-size: 0.95rem !important; line-height: 1.85 !important; color: #2C2C2C !important; border: 1px solid #D4C8BE !important; padding: 1rem 1.2rem !important; }
-    .story-box { background: #FFFFFF; border: 1px solid #D4C8BE; padding: 2.5rem 2.8rem; line-height: 2.3; font-size: 1.05rem; color: #2C2C2C; white-space: pre-wrap; }
+    .story-box { background: #FFFFFF; border: 1px solid #D4C8BE; padding: 2.5rem 2.8rem; line-height: 2.3; font-size: 1.05rem; color: #2C2C2C; white-space: pre-wrap; margin-bottom: 1.5rem; }
     .auto-box { background-color: #FDFBF7; border: 1px solid #E6DFD5; border-radius: 4px; padding: 1.5rem; margin-bottom: 1.5rem; line-height: 1.9; font-size: 0.98rem; color: #333333; }
 </style>
 """, unsafe_allow_html=True)
@@ -189,6 +185,8 @@ if "sessions" not in st.session_state:
     st.session_state["_last_saved_at"] = _saved.get("saved_at", "")
 
 if "creating_session" not in st.session_state: st.session_state.creating_session = False
+if "current_editor_buffer" not in st.session_state: st.session_state.current_editor_buffer = ""
+if "delete_confirm_idx" not in st.session_state: st.session_state.delete_confirm_idx = None
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 
@@ -203,7 +201,7 @@ with st.sidebar:
             st.session_state["_api_key_input"] = api_key_val
             st.rerun()
 
-    if st.button("＋  새 주제 만들기", use_container_width=True, key="new_topic_btn"):
+    if st.button("＋  새 장편 소설 기획", use_container_width=True, key="new_topic_btn"):
         st.session_state.creating_session = True
         st.rerun()
 
@@ -213,21 +211,50 @@ with st.sidebar:
         for idx_real, sess in enumerate(st.session_state.sessions):
             is_active = idx_real == st.session_state.active_idx
             bg = "background:#F5F0EB; border-left:2px solid #8B6F5E;" if is_active else "border-left:2px solid transparent;"
-            st.markdown(f'<div class="session-item" style="{bg} padding:0.5rem;"><span style="font-size:0.88rem;">{sess["title"]}</span></div>', unsafe_allow_html=True)
-            if st.button("집필실 열기", key=f"open_btn_{sess['id']}", use_container_width=True):
-                st.session_state.active_idx = idx_real
-                st.session_state.creating_session = False
-                st.rerun()
+            
+            st.markdown(f'<div class="session-item" style="{bg} padding:0.5rem;"><span style="font-size:0.85rem; font-weight:400; color:#2C2C2C;">{sess["title"]}</span></div>', unsafe_allow_html=True)
+            
+            side_col1, side_col2 = st.columns([7, 5])
+            with side_col1:
+                if st.button("집필실 열기", key=f"open_btn_{sess['id']}", use_container_width=True):
+                    st.session_state.active_idx = idx_real
+                    st.session_state.creating_session = False
+                    st.session_state.current_editor_buffer = ""
+                    st.session_state.delete_confirm_idx = None
+                    st.rerun()
+            with side_col2:
+                if st.session_state.delete_confirm_idx == idx_real:
+                    st.markdown('<p style="font-size:0.65rem; color:#A24B4B; margin:0 0 0.2rem 0; text-align:center;">진짜 삭제?</p>', unsafe_allow_html=True)
+                    del_sub_col1, del_sub_col2 = st.columns(2)
+                    with del_sub_col1:
+                        if st.button("네", key=f"del_yes_{sess['id']}", use_container_width=True):
+                            st.session_state.sessions.pop(idx_real)
+                            if st.session_state.active_idx == idx_real:
+                                st.session_state.active_idx = 0 if st.session_state.sessions else None
+                            elif st.session_state.active_idx is not None and st.session_state.active_idx > idx_real:
+                                st.session_state.active_idx -= 1
+                            st.session_state.delete_confirm_idx = None
+                            save_data()
+                            st.rerun()
+                    with del_sub_col2:
+                        if st.button("아니오", key=f"del_no_{sess['id']}", use_container_width=True):
+                            st.session_state.delete_confirm_idx = None
+                            st.rerun()
+                else:
+                    if st.button("방 삭제", key=f"del_req_{sess['id']}", use_container_width=True):
+                        st.session_state.delete_confirm_idx = idx_real
+                        st.rerun()
+            st.markdown("<div style='margin-bottom:0.6rem;'></div>", unsafe_allow_html=True)
 
 # ─── Main content ─────────────────────────────────────────────────────────────
 
 st.markdown('<div class="main-inner">', unsafe_allow_html=True)
 
 if st.session_state.creating_session:
-    st.markdown('<div class="session-header"><p class="session-title-text">새 주제 만들기</p></div>', unsafe_allow_html=True)
-    new_title = st.text_input("주제 제목 입력", placeholder="예: 에덴트리...")
-    if st.button("✦ 이 주제로 집필실 개방", use_container_width=True):
-        title_text = new_title.strip() if new_title.strip() else "제목 없는 주제"
+    st.markdown('<div class="session-header"><p class="session-title-text">새 장편 기획서 개설</p></div>', unsafe_allow_html=True)
+    new_title = st.text_input("장편 소설 가제 입력", placeholder="예: 에덴트리...")
+    if st.button("✦ 이 소설방 가동하기", use_container_width=True):
+        title_text = new_title.strip() if new_title.strip() else "제목 없는 장편 소설"
         sess = make_session(title_text)
         st.session_state.sessions.append(sess)
         st.session_state.active_idx = len(st.session_state.sessions) - 1
@@ -239,102 +266,139 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
     session = st.session_state.sessions[st.session_state.active_idx]
     
     if "synopsis" not in session: session["synopsis"] = ""
-    if "auto_steps" not in session: session["auto_steps"] = {"1": "", "2": "", "3": "", "4": ""}
-    if "auto_length" not in session: session["auto_length"] = "단편 소설"
+    if "auto_steps" not in session: session["auto_steps"] = {"1": "", "2": "", "3": ""}
+    if "auto_length" not in session: session["auto_length"] = "장편 소설"
     if "auto_style" not in session: session["auto_style"] = "성애나"
+    if "current_scene_instruction" not in session: session["current_scene_instruction"] = ""
+    if "scenes" not in session: session["scenes"] = []
 
-    st.markdown(f'<div class="session-header"><p class="session-title-text">{session["title"]}</p></div>', unsafe_allow_html=True)
+    full_compiled_manuscript = "\n\n".join(f"[{s['scene_title']}]\n{s['scene_content']}" for s in session["scenes"])
+
+    st.markdown(f'<div class="session-header"><p class="session-title-text">장편 집필실: {session["title"]}</p></div>', unsafe_allow_html=True)
 
     col_save1, col_save2 = st.columns(2)
     with col_save1:
-        st.text_area("대피용 텍스트 상자", value=session["auto_steps"]["4"], height=70, label_visibility="collapsed")
+        st.text_area("마우스 전체 선택(Ctrl+A) 누적 원고 대피 상자", value=full_compiled_manuscript if full_compiled_manuscript else "아직 축적된 장면 원고가 없습니다.", height=70, label_visibility="collapsed")
     with col_save2:
-        st.download_button("내 컴퓨터로 파일 백업 (.txt)", data=session["auto_steps"]["4"], file_name=f"{session['title']}_원고.txt")
+        st.download_button("내 컴퓨터로 누적 원고 전권 저장 (.txt)", data=full_compiled_manuscript, file_name=f"{session['title']}_통합원고.txt", disabled=len(session["scenes"]) == 0)
 
-    tab_auto, tab_legacy = st.tabs(["✦ 시놉시스 기반 자동화 집필실", "📝 기존 일상 파편 변환기"])
+    tab_infra, tab_builder, tab_book = st.tabs(["🏗️ 1단계: 소설 기초 뼈대 구축", "🔍 2단계: 현미경식 장면 이어 쓰기", "📚 3단계: 누적 완성 원고 서재"])
 
-    with tab_auto:
-        st.markdown('<p class="section-label">1단계: 기획 시놉시스 기술</p>', unsafe_allow_html=True)
-        synop_input = st.text_area("시놉시스 입력창", value=session["synopsis"], placeholder="여기에 소설의 줄거리나 전개 방향을 적어주세요.", height=150, key="synop_area", label_visibility="collapsed")
+    with tab_infra:
+        st.markdown('<p class="section-label">전체 기획 대서사 시놉시스</p>', unsafe_allow_html=True)
+        synop_input = st.text_area("시놉시스 기술창", value=session["synopsis"], placeholder="여기에 소설의 전체적인 거대 줄거리와 인물 연대기 흐름을 적어주세요.", height=150, key="synop_area", label_visibility="collapsed")
         if synop_input != session["synopsis"]:
             session["synopsis"] = synop_input
             save_data()
 
         st.markdown("<br>", unsafe_allow_html=True)
-        col_ctrl1, col_ctrl2 = st.columns(2)
-        
-        len_options = ["단편 소설", "중편 소설", "장편 소설"]
-        current_len_prefix = session["auto_length"].split()[0]
-        default_len_idx = len_options.index(current_len_prefix) if current_len_prefix in len_options else 0
-        
         sty_options = ["성애나", "클레어 키건", "김애란"]
         current_sty_prefix = session["auto_style"].split()[0]
         default_sty_idx = sty_options.index(current_sty_prefix) if current_sty_prefix in sty_options else 0
-
-        with col_ctrl1:
-            chosen_len = st.radio("소설 분량 규격 조절 기어", len_options, index=default_len_idx)
-            session["auto_length"] = chosen_len
-        with col_ctrl2:
-            chosen_sty = st.radio("합성 목표 문체 선택", sty_options, index=default_sty_idx)
+        chosen_sty = st.radio("장편 문체 톤 제어기", sty_options, index=default_sty_idx, horizontal=True)
+        if chosen_sty != session["auto_style"]:
             session["auto_style"] = chosen_sty
+            save_data()
 
         st.markdown("<hr class='divider'>", unsafe_allow_html=True)
-        st.markdown('<p class="section-label">단계별 순차적 빌드업 파이프라인</p>', unsafe_allow_html=True)
+        st.markdown('<p class="section-label">순차적 인프라 빌드업 단추</p>', unsafe_allow_html=True)
 
-        col_step1, col_step2, col_step3, col_step4 = st.columns(4)
-        
-        with col_step1:
-            if st.button("1단계: 인물 구축", use_container_width=True):
-                with st.spinner(" 인물 분석 중..."):
+        infra_col1, infra_col2, infra_col3 = st.columns(3)
+        with infra_col1:
+            if st.button("👥 1단계: 전체 인물 구축", use_container_width=True):
+                with st.spinner(" 시놉시스 기반 복합 인물 형상화 중..."):
                     session["auto_steps"]["1"] = call_auto_engine_api(session, "1")
                     save_data(); st.rerun()
-        with col_step2:
-            if st.button("2단계: 배경 묘사", use_container_width=True):
-                with st.spinner(" 감각적 무대 설계 중..."):
+        with infra_col2:
+            if st.button("🏡 2단계: 감각적 배경 설계", use_container_width=True):
+                with st.spinner(" 대기 및 사물의 물리적 무대 설계 중..."):
                     session["auto_steps"]["2"] = call_auto_engine_api(session, "2")
                     save_data(); st.rerun()
-        with col_step3:
-            if st.button("3단계: 갈등 전개", use_container_width=True):
-                with st.spinner(" 갈등 타임라인 직조 중..."):
+        with infra_col3:
+            if st.button("🎬 3단계: 갈등 구조 조율", use_container_width=True):
+                with st.spinner(" 갈등 축 및 서사 타임라인 조율 중..."):
                     session["auto_steps"]["3"] = call_auto_engine_api(session, "3")
                     save_data(); st.rerun()
-        with col_step4:
-            if st.button("4단계: 최종 소설화", use_container_width=True):
-                with st.spinner(" 원고 집필 중..."):
-                    session["auto_steps"]["4"] = call_auto_engine_api(session, "4")
-                    save_data(); st.rerun()
 
-        if session["auto_steps"]["1"]:
-            st.markdown("<br><p class='section-label'>👥 1단계 인물 설정안 (직접 수정 가능)</p>", unsafe_allow_html=True)
-            edit_s1 = st.text_area("인물 수정창", value=session["auto_steps"]["1"], height=200, key="edit_s1_area", label_visibility="collapsed")
-            if st.button("✦ 1단계 인물설정 수정본 저장", key="save_s1_btn"):
+        if session["auto_steps"].get("1"):
+            st.markdown("<br><p class='section-label'>👥 인물 설정안 변경 (수정 가능)</p>", unsafe_allow_html=True)
+            edit_s1 = st.text_area("인물 설정 수정", value=session["auto_steps"]["1"], height=150, key="e_s1", label_visibility="collapsed")
+            if st.button("✦ 인물 설정 수정본 반영하기", key="b_s1"):
                 session["auto_steps"]["1"] = edit_s1
-                save_data(); st.success("인물 설정이 안전하게 저장되었습니다."); st.rerun()
+                save_data(); st.success("인물 설정 데이터베이스가 개정되었습니다."); st.rerun()
 
-        if session["auto_steps"]["2"]:
-            st.markdown("<br><p class='section-label'>🏡 2단계 배경 묘사 풍경 (직접 수정 가능)</p>", unsafe_allow_html=True)
-            edit_s2 = st.text_area("배경 수정창", value=session["auto_steps"]["2"], height=200, key="edit_s2_area", label_visibility="collapsed")
-            if st.button("✦ 2단계 배경묘사 수정본 저장", key="save_s2_btn"):
+        if session["auto_steps"].get("2"):
+            st.markdown("<br><p class='section-label'>🏡 배경 묘사 풍경 변경 (수정 가능)</p>", unsafe_allow_html=True)
+            edit_s2 = st.text_area("배경 설정 수정", value=session["auto_steps"]["2"], height=150, key="e_s2", label_visibility="collapsed")
+            if st.button("✦ 배경 설정 수정본 반영하기", key="b_s2"):
                 session["auto_steps"]["2"] = edit_s2
-                save_data(); st.success("배경 설정이 안전하게 저장되었습니다."); st.rerun()
+                save_data(); st.success("배경 설정 데이터베이스가 개정되었습니다."); st.rerun()
 
-        if session["auto_steps"]["3"]:
-            st.markdown("<br><p class='section-label'>🎬 3단계 갈등 및 전개 설계 (직접 수정 가능)</p>", unsafe_allow_html=True)
-            edit_s3 = st.text_area("갈등 수정창", value=session["auto_steps"]["3"], height=200, key="edit_s3_area", label_visibility="collapsed")
-            if st.button("✦ 3단계 갈등설계 수정본 저장", key="save_s3_btn"):
+        if session["auto_steps"].get("3"):
+            st.markdown("<br><p class='section-label'>🎬 갈등 타임라인 구조 변경 (수정 가능)</p>", unsafe_allow_html=True)
+            edit_s3 = st.text_area("갈등 구조 수정", value=session["auto_steps"]["3"], height=150, key="e_s3", label_visibility="collapsed")
+            if st.button("✦ 갈등 구조 수정본 반영하기", key="b_s3"):
                 session["auto_steps"]["3"] = edit_s3
-                save_data(); st.success("갈등 구조가 안전하게 저장되었습니다."); st.rerun()
-        
-        if session["auto_steps"]["4"]:
-            st.markdown("<br><p class='section-label'>✦ 4단계 최종 완성된 소설 원고 (직접 수정 가능)</p>", unsafe_allow_html=True)
-            edit_s4 = st.text_area("원고 편집창", value=session["auto_steps"]["4"], height=450, key="story_editor_area", label_visibility="collapsed")
-            if st.button("✦ 수정본 최종 저장하기", use_container_width=True, key="save_edited_story_btn"):
-                session["auto_steps"]["4"] = edit_s4
-                save_data(); st.success("🖋️ 미성 작가님의 최종 원고가 안전하게 백업 저장되었습니다."); st.rerun()
+                save_data(); st.success("갈등 구조 데이터베이스가 개정되었습니다."); st.rerun()
 
-    with tab_legacy:
-        if session["entries"]:
-            for i, entry in enumerate(session["entries"]):
-                st.markdown(f'<div class="entry-block"><div class="entry-output">{entry["output"]}</div></div>', unsafe_allow_html=True)
+    with tab_builder:
+        st.markdown('<p class="section-label">🎬 이번 차례에 집필할 구체적 장면 설정</p>', unsafe_allow_html=True)
+        scene_inst = st.text_area("장면 지침창", value=session["current_scene_instruction"], placeholder="예: [장면 1] 재인이 콜센터 삼백이번 칸막이 방 안에서 도입부 풍경만 세밀하게 서술해라.", height=100, key="scene_inst_area", label_visibility="collapsed")
+        if scene_inst != session["current_scene_instruction"]:
+            session["current_scene_instruction"] = scene_inst
+            save_data()
+
+        next_scene_num = len(session["scenes"]) + 1
+        scene_title_input = st.text_input("현재 작성 중인 장면의 소제목 명명", value=f"제 {next_scene_num}장. 새로운 벽돌")
+
+        if st.button("✦ 현미경 작동: 지정된 특정 장면만 장편 호흡으로 추출", use_container_width=True):
+            if not session["current_scene_instruction"].strip():
+                st.warning("이번 차례에 조명할 장면 지침을 먼저 기술해 주세요.")
+            else:
+                with st.spinner(" 다음 결말을 요약하지 않고, 오직 이 장면에만 현미경을 대고 문장을 제련하는 중..."):
+                    generated_scene_block = call_scene_generation_api(session)
+                    st.session_state.current_editor_buffer = generated_scene_block
+                    st.rerun()
+
+        if st.session_state.current_editor_buffer:
+            st.markdown("<hr class='divider'>", unsafe_allow_html=True)
+            st.markdown("<p class='section-label'>✒️ AI가 벼려낸 장면 초안 (작가 수동 편집창)</p>", unsafe_allow_html=True)
+            
+            final_edited_buffer = st.text_area("버퍼 에디터", value=st.session_state.current_editor_buffer, height=400, key="buffer_editor_area", label_visibility="collapsed")
+            st.session_state.current_editor_buffer = final_edited_buffer
+
+            if st.button("✦ 이 장면의 온도가 마음에 듭니다. 영구 원고고에 이어 붙여 저장하기", use_container_width=True):
+                new_scene_payload = {
+                    "scene_title": scene_title_input.strip() if scene_title_input.strip() else f"장면 {next_scene_num}",
+                    "scene_content": st.session_state.current_editor_buffer,
+                    "created_at": now_str()
+                }
+                session["scenes"].append(new_scene_payload)
+                session["current_scene_instruction"] = ""
+                st.session_state.current_editor_buffer = ""
+                save_data()
+                st.success(f"『{new_scene_payload['scene_title']}』 원고가 통합 대서사 전권에 부드럽게 결합되었습니다.")
+                st.rerun()
+
+    with tab_book:
+        if not session["scenes"]:
+            st.markdown('<p style="color:#B0A49C; font-size:0.88rem; margin:3rem 0; text-align:center;">아직 결합된 벽돌 장면이 없습니다.</p>', unsafe_allow_html=True)
+        else:
+            st.markdown(f"<p class='section-label'>📚 현재까지 조립 완료된 총 {len(session['scenes'])}개의 대서사 원고</p>", unsafe_allow_html=True)
+            for idx_s, sc in enumerate(session["scenes"]):
+                st.markdown(f"### {sc['scene_title']}")
+                st.markdown(f'<div class="story-box"><div class="story-body">{sc["scene_content"]}</div></div>', unsafe_allow_html=True)
+                
+                with st.expander(f"🖋️ {sc['scene_title']} 원고 다시 열어 수동 수정하기"):
+                    revised_sc_content = st.text_area("과거장면수정", value=sc["scene_content"], height=250, key=f"rev_sc_{idx_s}", label_visibility="collapsed")
+                    if st.button("✦ 이 수정한 내용을 책장에 덮어쓰기", key=f"rev_btn_{idx_s}"):
+                        session["scenes"][idx_s]["scene_content"] = revised_sc_content
+                        save_data(); st.rerun()
+            
+            st.markdown("<hr class='divider'>", unsafe_allow_html=True)
+            if st.button("🚨 위험: 가장 마지막에 결합한 장면 원고 1개 제거하기 (실행 취소)", use_container_width=True):
+                session["scenes"].pop()
+                save_data()
+                st.rerun()
 
 st.markdown('</div>', unsafe_allow_html=True)
