@@ -125,6 +125,34 @@ def call_auto_engine_api(session: dict, step: str) -> str:
     )
     return response.choices[0].message.content.strip().replace("**", "")
 
+def call_next_scene_recommendation(session: dict) -> str:
+    client = _get_client()
+    if client is None: return "3단계 갈등 구조를 기반으로 장면 지침을 생성하려면 API 키가 필요합니다."
+    
+    past_manuscript = "\n\n".join(f"[{s['scene_title']}]\n{s['scene_content']}" for s in session.get("scenes", []))
+    next_num = len(session.get("scenes", [])) + 1
+    
+    user_content = (
+        f"소설 제목: {session['title']}\n"
+        f"전체 시놉시스: {session.get('synopsis', '')}\n"
+        f"인물 설정: {session['auto_steps'].get('1', '')}\n"
+        f"배경 설정: {session['auto_steps'].get('2', '')}\n"
+        f"3단계 설정된 전체 갈등 및 사건 타임라인 흐름: {session['auto_steps'].get('3', '')}\n\n"
+        f"[이미 작성 완료된 원고 목록]:\n{past_manuscript if past_manuscript else '아직 작성된 누적 원고가 없습니다.'}\n\n"
+        f"수행할 임무:\n"
+        f"위의 3단계 갈등 타임라인과 이미 작성 완료된 원고의 진행 상황을 정밀하게 대조하여, 이번 차례에 집필해야 할 가장 자연스러운 '제 {next_num}장'의 구체적인 장면 지침을 한 문단으로 작성해라.\n"
+        f"지침은 반드시 '예시: [제 {next_num}장 소제목] 어떤 인물이 어떤 공간에서 느끼는 정적과 갈등의 세부 풍경을 서두르지 말고 장편 호흡 본문으로 서술해라.' 형태로 출력해라. 자질구레한 설명 없이 오직 한 문단의 장면 지침 문장만 출력해라."
+    )
+    
+    response = client.chat.completions.create(
+        model="gpt-4o", max_completion_tokens=1000,
+        messages=[
+            {"role": "system", "content": "당신은 작가의 집필을 돕는 정교한 문학 조감독입니다. 오직 작가가 다음에 써야 할 구체적 장면 지침 문단만 정갈하게 반환해야 합니다."},
+            {"role": "user", "content": user_content}
+        ]
+    )
+    return response.choices[0].message.content.strip().replace("**", "")
+
 def call_scene_generation_api(session: dict) -> str:
     client = _get_client()
     if client is None: raise ValueError("OpenAI API 키가 설정되지 않았습니다.")
@@ -312,7 +340,7 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
             chosen_pov = st.radio("소설 서사 인칭 선택", pov_options, index=default_pov_idx)
             session["narrative_pov"] = chosen_pov
             
-            tense_options = ["현재형 (생동감과 깊은 실존적 몰입)", "과거형 (전통적 산문의 안정된 서사 호흡)"]
+            tense_options = ["현재형 (생동감และ 깊은 실존적 몰입)", "과거형 (전통적 산문의 안정된 서사 호흡)"]
             default_tense_idx = 0 if "현재" in session["narrative_tense"] else 1
             chosen_tense = st.radio("서사 주안 시제 설정", tense_options, index=default_tense_idx)
             session["narrative_tense"] = chosen_tense
@@ -369,9 +397,18 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
                 session["auto_steps"]["3"] = edit_s3
                 save_data(); st.success("갈등 구조 데이터베이스가 개정되었습니다."); st.rerun()
 
+    # ==================== 탭 2: 현미경식 장면 이어 쓰기 ====================
     with tab_builder:
-        st.markdown('<p class="section-label">🎬 이번 차례에 집필할 구체적 장면 설정</p>', unsafe_allow_html=True)
-        scene_inst = st.text_area("장면 지침창", value=session["current_scene_instruction"], placeholder="예: [장면 1] 재인이 콜센터 삼백이번 칸막이 방 안에서 도입부 풍경만 세밀하게 서술해라.", height=100, key="scene_inst_area", label_visibility="collapsed")
+        st.markdown('<p class="section-label">🎬 이번 차례에 집필할 구체적 장면 설정 (3단계 기반 자동 추천)</p>', unsafe_allow_html=True)
+        
+        # 3단계 갈등 구조 데이터가 개설되어 있고 지침창이 완전히 비어있을 때 자동 기어 동기화
+        if session["auto_steps"].get("3") and not session["current_scene_instruction"].strip():
+            with st.spinner(" 3단계 타임라인 추적고 다음 정밀 장면 분석 중..."):
+                recommended_text = call_next_scene_recommendation(session)
+                session["current_scene_instruction"] = recommended_text
+                save_data()
+        
+        scene_inst = st.text_area("장면 지침창", value=session["current_scene_instruction"], placeholder="1단계에서 3단계 갈등 구조 조율 버튼을 누르시면, 다음 차례에 써야 할 구체적 장면 지침이 이곳에 자동으로 채워집니다.", height=120, key="scene_inst_area", label_visibility="collapsed")
         if scene_inst != session["current_scene_instruction"]:
             session["current_scene_instruction"] = scene_inst
             save_data()
@@ -379,6 +416,15 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
         next_scene_num = len(session["scenes"]) + 1
         scene_title_input = st.text_input("현재 작성 중인 장면의 소제목 명명", value=f"제 {next_scene_num}장. 새로운 벽돌")
 
+        # 수동 추천 갱신 버튼 배치
+        if session["auto_steps"].get("3"):
+            if st.button("🔄 다음 추천 장면 지침 새로고침하기", use_container_width=True, key="refresh_rec_btn"):
+                with st.spinner(" 다음 장면을 분석하는 중..."):
+                    recommended_text = call_next_scene_recommendation(session)
+                    session["current_scene_instruction"] = recommended_text
+                    save_data(); st.rerun()
+
+        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("✦ 현미경 작동: 지정된 특정 장면만 장편 호흡으로 추출", use_container_width=True):
             if not session["current_scene_instruction"].strip():
                 st.warning("이번 차례에 조명할 장면 지침을 먼저 기술해 주세요.")
@@ -408,6 +454,7 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
                 st.success(f"『{new_scene_payload['scene_title']}』 원고가 장편 통합 서사에 완벽하게 결합되었습니다.")
                 st.rerun()
 
+    # ==================== 탭 3: 누적 완성 원고 서재 ====================
     with tab_book:
         if not session["scenes"]:
             st.markdown('<p style="color:#B0A49C; font-size:0.88rem; margin:3rem 0; text-align:center;">아직 결합된 벽돌 장면이 없습니다.</p>', unsafe_allow_html=True)
