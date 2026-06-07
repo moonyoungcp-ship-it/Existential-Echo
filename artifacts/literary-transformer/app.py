@@ -250,4 +250,112 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
     if "current_scene_instruction" not in session: session["current_scene_instruction"] = ""
     if "scenes" not in session: session["scenes"] = []
 
-    full_compiled_manuscript = "\n\n\n".join(f"【 {s['scene_title']} 】\n\
+    full_compiled_manuscript = "\n\n\n".join(f"【 {s['scene_title']} 】\n\n{s['scene_content']}" for s in session["scenes"])
+
+    st.markdown(f'<div class="session-header"><p class="session-title-text">연작 집필실: 『{session["title"]}』</p></div>', unsafe_allow_html=True)
+
+    col_save1, col_save2 = st.columns(2)
+    with col_save1:
+        st.text_area("마우스 전체 선택(Ctrl+A) 연작 전권 대피 상자", value=full_compiled_manuscript if full_compiled_manuscript else "아직 축적된 단편 소설 원고가 없습니다.", height=70, label_visibility="collapsed")
+    with col_save2:
+        st.download_button("내 컴퓨터로 연작 통합 마스터본 저장 (.txt)", data=full_compiled_manuscript, file_name=f"{session['title']}_연작통합본.txt", disabled=len(session["scenes"]) == 0)
+
+    tab_infra, tab_builder, tab_book = st.tabs(["🏗️ 1단계: 거대 대세계관 설정", "🔍 2단계: 개별 단편 소설 세부 제련", "📚 3단계: 연작 단편집 책장"])
+
+    # ==================== 탭 1: 거대 대세계관 설정 ====================
+    with tab_infra:
+        st.markdown('<p class="section-label">🌌 연작소설 전체를 관통하는 거대 세계관 및 기획 의도</p>', unsafe_allow_html=True)
+        synop_input = st.text_area("세계관 기술창", value=session["synopsis"], placeholder="예: 주인공 재인이 겪는 콜센터 시절의 상처부터 캐나다 이주, 그리고 번역가가 되어 자아를 회복하기까지의 거대 타임라인과 상실의 흔적들을 각기 다른 시선과 단편들로 유기적으로 엮어낸다.", height=180, key="synop_area", label_visibility="collapsed")
+        if synop_input != session["synopsis"]:
+            session["synopsis"] = synop_input
+            save_data()
+
+        st.markdown("<br><p class='section-label'>🚨 연작 통합 문학 규격 기어</p>", unsafe_allow_html=True)
+        
+        infra_ctrl1, infra_ctrl2 = st.columns(2)
+        with infra_ctrl1:
+            pov_options = ["1인칭 화자 ('나')", "3인칭 전지적 시점", "3인칭 제한적 관찰자 시점"]
+            default_pov_idx = pov_options.index(session["narrative_pov"]) if session["narrative_pov"] in pov_options else 0
+            chosen_pov = st.radio("연작 화자 인칭 선택", pov_options, index=default_pov_idx)
+            session["narrative_pov"] = chosen_pov
+            
+            tense_options = ["현재형 (실존적 몰입과 현재성 극대화)", "과거형 (전통적 단편 산문의 안정된 리듬)"]
+            default_tense_idx = 0 if "현재" in session["narrative_tense"] else 1
+            chosen_tense = st.radio("연작 시제 호흡 설정", tense_options, index=default_tense_idx)
+            session["narrative_tense"] = chosen_tense
+            
+        with infra_ctrl2:
+            era_input = st.text_input("단편별 구체적 시대 배경 고증 역사 설정", value=session["era_setting"], placeholder="예: 1부-2000년대 초반 서울, 2부-2010년대 중반 캐나다...")
+            session["era_setting"] = era_input
+            
+            dialect_options = ["사용 안 함 (표준어 중심)", "제주 방언 (제주 사투리)", "경상 방언", "전라 방언", "충청 방언"]
+            default_dia_idx = dialect_options.index(session["dialect_setting"]) if session["dialect_setting"] in dialect_options else 0
+            chosen_dia = st.radio("연작 대화체 사투리 제어 기어", dialect_options, index=default_dia_idx)
+            session["dialect_setting"] = chosen_dia
+            
+        save_data()
+
+    # ==================== 탭 2: 개별 단편 소설 세부 제련 ====================
+    with tab_builder:
+        st.markdown('<p class="section-label">🎬 이번 차례에 제련할 단편 소설의 구체적 서사와 지침 기술</p>', unsafe_allow_html=True)
+        scene_inst = st.text_area("장면 지침창", value=session["current_scene_instruction"], placeholder="예: [제1부. 아크릴 칸막이의 오후] 주인공 재인이 2000년대 초반 분주한 콜센터 삼백이번 칸막이 방 안에서 타인의 마모된 소음을 헤드셋으로 수거하며 느끼는 실존적 정적과 고독을, 사오와 대면하기 직전까지의 긴 호흡 단편 서사로 깊이 있게 집필해라. 결말까지 요약하지 말 것.", height=150, key="scene_inst_area", label_visibility="collapsed")
+        if scene_inst != session["current_scene_instruction"]:
+            session["current_scene_instruction"] = scene_inst
+            save_data()
+
+        next_scene_num = len(session["scenes"]) + 1
+        scene_title_input = st.text_input("현재 집필 중인 단편 소설의 독립 가제 명명", value=f"제 {next_scene_num}부. 새로운 파편")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("✦ 최상위 거장 톤 가동: 독립 단편 원고 제련", use_container_width=True):
+            if not session["current_scene_instruction"].strip():
+                st.warning("이번 차례에 온전히 몰입할 단편 소설 지침을 먼저 명시해 주세요.")
+            else:
+                with st.spinner(" 앞선 단편들의 문조를 상속받아 요약 없는 정밀 산문 원고를 직조하는 중..."):
+                    generated_scene_block = call_scene_generation_api(session)
+                    st.session_state.current_editor_buffer = generated_scene_block
+                    st.rerun()
+
+        if st.session_state.current_editor_buffer:
+            st.markdown("<hr class='divider'>", unsafe_allow_html=True)
+            st.markdown("<p class='section-label'>✒️ 거장 톤으로 제련된 단편 초안 (작가 전면 다듬기 및 가공 편집창)</p>", unsafe_allow_html=True)
+            
+            final_edited_buffer = st.text_area("버퍼 에디터", value=st.session_state.current_editor_buffer, height=450, key="buffer_editor_area", label_visibility="collapsed")
+            st.session_state.current_editor_buffer = final_edited_buffer
+
+            if st.button("✦ 이 단편의 온도가 완벽합니다. 연작 대서사 책장에 결합 저장하기", use_container_width=True):
+                new_scene_payload = {
+                    "scene_title": scene_title_input.strip() if scene_title_input.strip() else f"제 {next_scene_num}부. 단편",
+                    "scene_content": st.session_state.current_editor_buffer,
+                    "created_at": now_str()
+                }
+                session["scenes"].append(new_scene_payload)
+                session["current_scene_instruction"] = ""
+                st.session_state.current_editor_buffer = ""
+                save_data()
+                st.success(f"『{new_scene_payload['scene_title']}』 원고가 연작소설 대서사 단편집 책장에 정갈하게 결합되었습니다.")
+                st.rerun()
+
+    # ==================== 탭 3: 연작 단편집 책장 ====================
+    with tab_book:
+        if not session["scenes"]:
+            st.markdown('<p style="color:#B0A49C; font-size:0.88rem; margin:3rem 0; text-align:center;">아직 결합되어 꽂힌 단편 소설이 없습니다.<br>2단계 탭에서 연작의 첫 번째 파편을 빌드업하여 서재 책장을 채워나가세요.</p>', unsafe_allow_html=True)
+        else:
+            st.markdown(f"<p class='section-label'>📚 현재까지 조립 완료된 총 {len(session['scenes'])}편의 연작 단편 단편집</p>", unsafe_allow_html=True)
+            for idx_s, sc in enumerate(session["scenes"]):
+                st.markdown(f"### {sc['scene_title']}")
+                st.markdown(f'<div class="story-box"><div class="story-body">{sc["scene_content"]}</div></div>', unsafe_allow_html=True)
+                
+                with st.expander(f"I_I 🖋️ {sc['scene_title']} 단편 다시 열어 전면 수동 수정하기"):
+                    revised_sc_content = st.text_area("과거단편수정", value=sc["scene_content"], height=300, key=f"rev_sc_{idx_s}", label_visibility="collapsed")
+                    if st.button("✦ 이 고친 단편 내용을 책장에 새롭게 덮어쓰기", key=f"rev_btn_{idx_s}"):
+                        session["scenes"][idx_s]["scene_content"] = revised_sc_content
+                        save_data(); st.rerun()
+            
+            st.markdown("<hr class='divider'>", unsafe_allow_html=True)
+            if st.button("🚨 위험: 가장 마지막에 책장에 꽂은 단편 원고 1편 철거하기 (실행 취소)", use_container_width=True):
+                session["scenes"].pop()
+                save_data()
+                st.rerun()
+
+st.markdown('</div>', unsafe_allow_html=True)
