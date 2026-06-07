@@ -157,7 +157,7 @@ st.set_page_config(page_title="일상의 문학", page_icon="✦", layout="wide"
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght=300;400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Noto Serif KR', Georgia, serif; }
     .stApp { background-color: #FAF8F5; }
     [data-testid="stSidebar"] { background-color: #F0EDE8 !important; border-right: 1px solid #D4C8BE; }
@@ -207,15 +207,23 @@ with st.sidebar:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── 사이드바 중첩 제한(Columns nesting) 규격을 피한 정갈한 세로식 목록 기어 ──
     if st.session_state.sessions:
         for idx_real, sess in enumerate(st.session_state.sessions):
             is_active = idx_real == st.session_state.active_idx
             bg = "background:#F5F0EB; border-left:2px solid #8B6F5E;" if is_active else "border-left:2px solid transparent;"
             
-            st.markdown(f'<div class="session-item" style="{bg} padding:0.5rem;"><span style="font-size:0.85rem; font-weight:400; color:#2C2C2C;">{sess["title"]}</span></div>', unsafe_allow_html=True)
+            # 하위 호환성을 위해 생성일시가 누락된 과거 방인 경우 현재 시각 보정
+            session_time = sess.get("created_at", "날짜 불명")
             
-            # 사이드바에서 중첩 컬럼을 쓰지 않고 안전하게 수직 배치
+            # 가제 텍스트와 아래에 은은한 폰트로 날짜 및 시간을 정갈하게 출력
+            st.markdown(
+                f'<div class="session-item" style="{bg} padding:0.5rem 0.8rem;">'
+                f'<div style="font-size:0.85rem; font-weight:400; color:#2C2C2C; margin-bottom:0.15rem;">{sess["title"]}</div>'
+                f'<div style="font-size:0.68rem; color:#9A8880; letter-spacing:0.02em;">📅 {session_time}</div>'
+                f'</div>', 
+                unsafe_allow_html=True
+            )
+            
             if st.button("집필실 열기", key=f"open_btn_{sess['id']}", use_container_width=True):
                 st.session_state.active_idx = idx_real
                 st.session_state.creating_session = False
@@ -224,7 +232,7 @@ with st.sidebar:
                 st.rerun()
                 
             if st.session_state.delete_confirm_idx == idx_real:
-                st.markdown('<p style="font-size:0.7rem; color:#A24B4B; margin:0.4rem 0 0.2rem 0; text-align:center; font-weight:500;">🚨 정말 이 서재를 영구 삭제할까요?</p>', unsafe_allow_html=True)
+                st.markdown('<p style="font-size:0.7rem; color:#A24B4B; margin:0.4rem 0 0.2rem 0; text-align:center; font-weight:500;">🚨 진짜 이 서재를 영구 삭제할까요?</p>', unsafe_allow_html=True)
                 if st.button("🗑️ 네, 흔적 없이 삭제합니다", key=f"del_yes_{sess['id']}", use_container_width=True):
                     st.session_state.sessions.pop(idx_real)
                     if st.session_state.active_idx == idx_real:
