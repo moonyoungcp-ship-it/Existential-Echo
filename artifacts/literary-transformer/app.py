@@ -87,7 +87,7 @@ BASE_SYSTEM_PROMPT = """당신은 한국 현대 문학의 정수를 담은 작�
 - 일상의 사소한 장면에서 실존적 의미를 길어올립니다
 - 감각적이고 구체적인 이미지로 추상적 감정을 표현합니다
 - 시제는 주로 현재형을 사용해 독자를 그 순간 안으로 끌어들입니다
-- 주인공을 '나'로 지칭하되, 거리감และ 관찰자적 시선을 유지합니다
+- 주인공을 '나'로 지칭하되, 거리감과 관찰자적 시선을 유지합니다
 - 자연물이나 일상의 사물에 감정을 투영하는 물아일체적 표현을 활용합니다
 - 결말은 열린 결말로, 독자에게 여운을 남깁니다
 
@@ -145,8 +145,6 @@ STYLE_MODE_MAP = {
 STORY_COMPLETE_PROMPT = """당신은 한국 현대 문학을 대표하는 단편 작가입니다.
 사용자가 여러 개의 독립적인 문학적 장면들을 보내면, 이것들을 하나의 유기적인 단편소설로 엮어야 합니다.
 반드시 문장 앞뒤나 내부에 별표(**) 같은 마크다운 표식을 절대 사용하지 마세요. 순수한 문학 텍스트만 출력하세요."""
-
-# ─── New Automated Engine Prompts ──────────────────────────────────────────────
 
 AUTO_ENGINE_PROMPT = """당신은 소설 창작의 전 과정을 완벽하게 통제하는 수석 문학 감독이자 거장 소설가입니다.
 작가가 제공한 시놉시스를 바탕으로, 지정된 분량 호흡에 맞추어 [1단계: 인물 구축], [2단계: 세부 배경 묘사], [3단계: 갈등 및 사건 전개], [4단계: 최종 문장화 및 합성] 단계를 정밀하게 수행해야 합니다.
@@ -250,7 +248,7 @@ def call_auto_engine_api(session: dict, step: str) -> str:
     step_instruction = {
         "1": "1단계 [인물 구축]: 제공된 소설 시놉시스를 바탕으로 주인공 및 주변 인물들의 성격, 심리적 결함, 모순적 내면을 깊이 있게 분석하고 설정안을 도출해라.",
         "2": f"2단계 [세부 배경 묘사]: 앞서 구축된 인물 정보({session['auto_steps']['1']})를 참조하여, 그들이 호흡할 공간의 대기, 온도, 습도, 사물의 감각적 풍경을 세밀하게 빌드업해라.",
-        "3": f"3단계 [갈등 및 사건 전개]: 앞선 인물과 배경 설정({session['auto_steps']['2']}) 위에서 시놉시스의 사건이 어떻게 고조되는지 구체적인 서사 타임라인과 심리적 균열을 설계해라.",
+        "3": f"3단계 [갈등 및 사건 전개]: 앞선 인물과 배경 설정({session['auto_steps']['2']}) 위에서 시놉시스의 사건이 어떻게 고조되는지 구체적인 서사 타임라인และ 심리적 균열을 설계해라.",
         "4": f"4단계 [최종 문장화 및 합성]: 모든 빌드업 데이터({session['auto_steps']['3']})를 종합하여, 선택된 '{session.get('auto_style', '성애나')}'의 문체 톤으로 실제 소설 원고 본문 문단(4~5문장 이상)을 완벽하게 가공하여 완성해라."
     }
     
@@ -296,7 +294,6 @@ def call_story_complete_api(session: dict) -> str:
 
 st.set_page_config(page_title="일상의 문학", page_icon="✦", layout="wide")
 
-# (기존의 눈이 편안한 웜 베이지 CSS 스타일 코드는 완벽하게 유지됩니다)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600&display=swap');
@@ -354,7 +351,6 @@ with st.sidebar:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── 기존 저장 목록 정렬 및 노출 코드 ──
     if st.session_state.sessions:
         for idx_real, sess in enumerate(st.session_state.sessions):
             is_active = idx_real == st.session_state.active_idx
@@ -385,7 +381,6 @@ if st.session_state.creating_session:
 elif st.session_state.active_idx is not None and st.session_state.sessions:
     session = st.session_state.sessions[st.session_state.active_idx]
     
-    # 하위 호환 구조 마이그레이션
     if "synopsis" not in session: session["synopsis"] = ""
     if "auto_steps" not in session: session["auto_steps"] = {"1": "", "2": "", "3": "", "4": ""}
     if "auto_length" not in session: session["auto_length"] = "단편 소설"
@@ -393,16 +388,14 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
 
     st.markdown(f'<div class="session-header"><p class="session-title-text">{session["title"]}</p></div>', unsafe_allow_html=True)
 
-    # ── 상단 수동 클립보드 대피 및 다운로드 버튼 (안전장치) ──
     col_save1, col_save2 = st.columns(2)
     with col_save1:
-        st.text_area("마우스 Ctrl+A 복사용 텍스트 상자", value=session["auto_steps"]["4"] if session["auto_steps"]["4"] else get_full_text(session), height=70, label_visibility="collapsed", help="언제든 이 텍스트를 메모장으로 대피시키세요.")
+        st.text_area("마우스 Ctrl+A 복사용 텍스트 상자", value=session["auto_steps"]["4"] if session["auto_steps"]["4"] else get_full_text(session), height=70, label_visibility="collapsed")
     with col_save2:
         st.download_button("내 컴퓨터로 파일 백업 (.txt)", data=session["auto_steps"]["4"] if session["auto_steps"]["4"] else get_full_text(session), file_name=f"{session['title']}_원고.txt")
 
     tab_auto, tab_legacy = st.tabs(["✦ 시놉시스 기반 자동화 집필실", "📝 기존 일상 파편 변환기"])
 
-    # ════ 모듈 A: 새롭게 추가된 시놉시스 기반 단계별 집필실 ════
     with tab_auto:
         st.markdown('<p class="section-label">1단계: 기획 시놉시스 기술</p>', unsafe_allow_html=True)
         synop_input = st.text_area("시놉시스 입력창", value=session["synopsis"], placeholder="여기에 소설의 기획의도나 시놉시스, 대략적인 전개 방향을 적어주세요.", height=150, key="synop_area", label_visibility="collapsed")
@@ -412,11 +405,21 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
 
         st.markdown("<br>", unsafe_allow_html=True)
         col_ctrl1, col_ctrl2 = st.columns(2)
+        
+        # 안전한 매칭을 위한 인덱스 계산부 예외 예방 조치
+        len_options = ["단편 소설", "중편 소설", "장편 소설"]
+        current_len_prefix = session["auto_length"].split()[0]
+        default_len_idx = len_options.index(current_len_prefix) if current_len_prefix in len_options else 0
+        
+        sty_options = ["성애나", "클레어 키건", "김애란"]
+        current_sty_prefix = session["auto_style"].split()[0]
+        default_sty_idx = sty_options.index(current_sty_prefix) if current_sty_prefix in sty_options else 0
+
         with col_ctrl1:
-            chosen_len = st.radio("소설 분량 규격 조절 기어", ["단편 소설 (단일 사건 중심)", "중편 소설 (입체적 갈등 구조)", "장편 소설 (대서사 및 정밀 묘사)"], index=["단편 소설", "중편 소설", "장편 소설"].index(session["auto_length"].split()[0]))
+            chosen_len = st.radio("소설 분량 규격 조절 기어", len_options, index=default_len_idx)
             session["auto_length"] = chosen_len
         with col_ctrl2:
-            chosen_sty = st.radio("합성 목표 문체 선택", ["성애나 (묵직한 관조)", "클레어 키건 (절제와 침묵)", "김애란 (감각적 비유)"], index=["성애나", "클레어 키건", "김애란"].index(session["auto_style"].split()[0]))
+            chosen_sty = st.radio("합성 목표 문체 선택", sty_options, index=default_sty_idx)
             session["auto_style"] = chosen_sty
 
         st.markdown("<hr class='divider'>", unsafe_allow_html=True)
@@ -449,7 +452,6 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
                     save_data()
                     st.rerun()
 
-        # 각 단계 결과 노출
         if session["auto_steps"]["1"]:
             with st.expander("인물 분석 설정안 확인"): st.markdown(f'<div class="auto-box">{session["auto_steps"]["1"]}</div>', unsafe_allow_html=True)
         if session["auto_steps"]["2"]:
@@ -461,7 +463,6 @@ elif st.session_state.active_idx is not None and st.session_state.sessions:
             st.markdown("<br><p class='section-label'>✦ 최종 완성된 소설 원고 본문</p>", unsafe_allow_html=True)
             st.markdown(f'<div class="story-box"><div class="story-body">{session["auto_steps"]["4"]}</div></div>', unsafe_allow_html=True)
 
-    # ════ 모듈 B: 기존에 사용하던 일상 문체 변환기 (데이터 보존용) ════
     with tab_legacy:
         if session["entries"]:
             for i, entry in enumerate(session["entries"]):
