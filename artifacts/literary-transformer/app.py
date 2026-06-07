@@ -69,7 +69,7 @@ def load_data(from_backup: int = 0) -> tuple[dict, str]:
 
 BASE_SYSTEM_PROMPT = """당신은 한국 현대 문학의 정수를 담은 작가입니다.
 사용자가 일상적인 이야기나 경험을 입력하면, 그것을 실존적인 고독과 서정성이 깃든 현대 소설 문체로 변환해야 합니다.
-설명하거나 해석하지 않습니다 — 보여줄 뿐입니다. 반드시 순수한 문학 텍스트만 출력하세요. 별표 같은 기호는 금지합니다."""
+설명하거나 해석하지 않습니다 — 보여줄 뿐입니다. 반드시 순수한 문학 텍스트만 출력하세요. 별표(**) 같은 기호는 금지합니다."""
 
 AUTO_ENGINE_PROMPT = """당신은 소설 창작의 전 과정을 완벽하게 통제하는 수석 문학 감독이자 거장 소설가입니다.
 작가가 제공한 시놉시스를 바탕으로, 지정된 분량 호흡에 맞추어 [1단계: 인물 구축], [2단계: 세부 배경 묘사], [3단계: 갈등 및 사건 전개], [4단계: 최종 문장화 및 합성] 단계를 정밀하게 수행해야 합니다.
@@ -80,11 +80,11 @@ AUTO_ENGINE_PROMPT = """당신은 소설 창작의 전 과정을 완벽하게 �
 3. 장편 소설: 서사를 절대 서둘러 결론짓지 마십시오. 인물이 처한 방의 온도, 가구의 냄새, 피부에 닿는 계절감, 인물의 아주 사소한 손짓과 깊은 전사(過去)까지 극도로 세밀하고 장엄하게 빌드업하십시오.
 
 절대 주의 사항:
-출력하는 결과물 텍스트 전체에 별표 같은 마크다운 강조 기호를 절대로 섞지 마십시오. 오직 정갈한 순수 문장만 출력해야 합니다."""
+출력하는 결과물 텍스트 전체에 별표(**) 같은 마크다운 강조 기호를 절대로 섞지 마십시오. 오직 정갈한 순수 문장만 출력해야 합니다."""
 
 STORY_COMPLETE_PROMPT = """당신은 한국 현대 문학을 대표하는 단편 작가입니다.
 사용자가 여러 개의 독립적인 문학적 장면들을 보내면, 이것들을 하나의 유기적인 단편소설로 엮어야 합니다.
-반드시 문장 앞뒤나 내부에 별표 같은 마크다운 표식을 절대 사용하지 마세요. 순수한 문학 텍스트만 출력하세요."""
+반드시 문장 앞뒤나 내부에 별표(**) 같은 마크다운 표식을 절대 사용하지 마세요. 순수한 문학 텍스트만 출력하세요."""
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -118,7 +118,7 @@ def call_api(user_text: str, session: dict) -> str:
         model="gpt-4o", max_completion_tokens=2000,
         messages=[{"role": "system", "content": BASE_SYSTEM_PROMPT}, {"role": "user", "content": user_text.strip()}]
     )
-    return response.choices[0].message.content.strip()
+    return response.choices[0].message.content.strip().replace("**", "")
 
 def call_auto_engine_api(session: dict, step: str) -> str:
     client = _get_client()
@@ -151,7 +151,7 @@ st.set_page_config(page_title="일상의 문학", page_icon="✦", layout="wide"
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght=300;400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600&display=swap');
     html, body, [class*="css"] { font-family: 'Noto Serif KR', Georgia, serif; }
     .stApp { background-color: #FAF8F5; }
     [data-testid="stSidebar"] { background-color: #F0EDE8 !important; border-right: 1px solid #D4C8BE; }
